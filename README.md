@@ -1,5 +1,7 @@
 ﻿# X-Spammers Twitter 自动私信工具
 
+> ⚠️ **重要安全提醒**：本项目使用 `cookies.json` 存储 Twitter 登录凭证。该文件包含敏感信息，已被添加到 `.gitignore` 中，永远不会被提交到代码仓库。请勿分享或提交此文件，使用 `cookies.template.json` 作为模板创建您自己的 `cookies.json` 文件。
+
 一个基于 Electron + Vue 3 开发的 Twitter 自动化私信工具，提供图形界面操作。该工具可以自动向特定搜索结果页面的用户发送私信，无需使用 Twitter API。
 
 ## ⚠️ 免责声明
@@ -56,9 +58,13 @@
 2. 安装 Cookie Editor 浏览器扩展
    - [Chrome/Edge 版本](https://microsoftedge.microsoft.com/addons/detail/cookieeditor/neaplmfkghagebokkhpjpoebhdledlfi)
    - [Firefox 版本](https://addons.mozilla.org/en-US/firefox/addon/cookie-editor/)
-3. 导出 cookies 并保存为项目根目录下的 `cookies.json` 文件
+3. 复制 cookies 模板文件：
+```bash
+cp cookies.template.json cookies.json
+```
+4. 使用 Cookie Editor 导出您的 Twitter cookies，并替换 `cookies.json` 中的内容
 
-> 注意：某些 Cookie 编辑器导出的 JSON 中可能需要将 `null` 替换为 `unspecified`
+> 注意：`cookies.json` 文件包含敏感信息，已被添加到 `.gitignore` 中，不会被提交到代码仓库。详细说明请参考 [cookies 设置文档](docs/cookies-setup.md)。
 
 ### 3. 安装依赖
 
