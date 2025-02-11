@@ -1,0 +1,54 @@
+# 依赖
+/node_modules
+/.pnp
+.pnp.js
+
+# 编译输出
+/dist
+/release
+/build
+
+# 测试覆盖率
+/coverage
+
+# 本地环境文件
+.env.local
+.env.*.local
+
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs
+*.log
+
+# 编辑器目录和文件
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 类型声明文件生成的临时文件
+*.tsbuildinfo
+
+# 运行时数据
+error_*.png
+
+# Electron 打包
+/out
+
+# 缓存
+.cache
+.temp
+.eslintcache
+
+# 自动生成的文件
+auto-imports.d.ts
+components.d.ts 

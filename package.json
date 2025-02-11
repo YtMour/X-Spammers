@@ -1,19 +1,73 @@
 {
-  "name": "twitter-bot-puppeteer",
-  "version": "1.1.0",
-  "description": "",
-  "main": "index.js",
+  "name": "x-spammers",
+  "version": "2.0.0",
+  "description": "Twitter 自动化私信工具 - 图形界面版",
+  "main": "dist/main/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx watch src/index.ts"
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "electron:dev": "electron .",
+    "electron:build": "electron-builder",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "build": {
+    "appId": "com.x-spammers.app",
+    "productName": "X-Spammers",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "public/icon.ico"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "public/icon.icns"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "public/icon.png"
+    }
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "dependencies": {
-    "@types/node": "^18.16.0",
+    "@electron-toolkit/utils": "^2.0.0",
+    "@iconify/vue": "^4.1.1",
+    "@vueuse/core": "^10.2.1",
+    "electron-store": "^8.1.0",
+    "naive-ui": "^2.34.4",
+    "pinia": "^2.1.4",
     "puppeteer": "^19.11.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "vue": "^3.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.16.0",
+    "@types/puppeteer": "^7.0.4",
+    "@types/puppeteer-core": "^7.0.4",
+    "@unocss/preset-attributify": "^0.53.4",
+    "@unocss/preset-icons": "^0.53.4",
+    "@unocss/preset-uno": "^0.53.4",
+    "@vitejs/plugin-vue": "^4.2.3",
+    "@vue/compiler-sfc": "^3.3.4",
+    "electron": "^25.0.0",
+    "electron-builder": "^24.6.4",
+    "sass": "^1.63.6",
+    "typescript": "^5.0.2",
+    "unocss": "^0.53.4",
+    "vite": "^4.4.5",
+    "vite-plugin-electron": "^0.14.0",
+    "vue-tsc": "^1.8.5"
   }
 }
