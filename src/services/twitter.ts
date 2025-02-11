@@ -7,6 +7,14 @@ export class TwitterService {
   private config: TwitterConfig
   private onLog: (message: string, type: 'info' | 'success' | 'warning' | 'error') => void
   private onSentCount: (count: number) => void
+  private readonly DELAYS = {
+    PAGE_LOAD: 10000,      // 页面加载等待时间
+    SCROLL_INTERVAL: 8000, // 滚动间隔
+    BUTTON_CHECK: 3000,    // 按钮检查间隔
+    MESSAGE_SEND: 5000,    // 发送消息后等待时间
+    RETRY_DELAY: 15000     // 错误重试等待时间
+  }
+  private readonly MAX_RETRIES = 3  // 最大重试次数
 
   constructor(
     config: TwitterConfig,
@@ -90,8 +98,6 @@ export class TwitterService {
   async start() {
     this.isRunning = true
     let sentCount = 0
-    let retryCount = 0
-    const maxRetries = 3
     const startTime = new Date()
 
     try {
@@ -102,105 +108,68 @@ export class TwitterService {
           this.onLog(`正在访问搜索页面: ${this.config.searchQuery}`, 'info')
           await window.electronAPI.goto(searchUrl)
           
-          // 等待搜索结果加载
+          // 等待页面加载
           this.onLog('⌛ 等待页面加载...', 'info')
-          const hasResults = await window.electronAPI.waitForSelector(
-            "div[data-testid='primaryColumn']",
-            { timeout: 30000 }
-          )
+          await window.electronAPI.waitForTimeout(this.DELAYS.PAGE_LOAD)
 
-          if (!hasResults) {
-            throw new Error('搜索结果加载失败')
-          }
-
-          // 等待推文或用户卡片出现
+          // 等待内容出现
           this.onLog('👀 等待内容出现...', 'info')
-          const hasContent = await window.electronAPI.evaluate(`
-            () => new Promise((resolve) => {
-              let attempts = 0;
-              const maxAttempts = 10;
-              
-              const checkContent = () => {
-                const tweets = document.querySelectorAll('article[data-testid="tweet"]');
-                const userCards = document.querySelectorAll('div[data-testid="UserCell"]');
-                
-                if (tweets.length > 0 || userCards.length > 0) {
-                  resolve(true);
-                } else if (attempts < maxAttempts) {
-                  attempts++;
-                  setTimeout(checkContent, 1000);
-                } else {
-                  resolve(false);
-                }
-              };
-              
-              checkContent();
-            })
-          `);
+          await window.electronAPI.waitForSelector("div[data-testid='primaryColumn']", { timeout: 30000 })
+          await window.electronAPI.waitForTimeout(5000)
 
-          if (!hasContent) {
-            this.onLog('⚠️ 页面内容加载超时，尝试继续处理...', 'warning');
+          // 开始查找用户
+          this.onLog(`✨ 开始搜索用户 [关键词: ${this.config.searchQuery}]`, 'info')
+          let profileLinks = await this.findNewProfiles()
+          
+          // 如果没有找到用户，尝试滚动加载更多
+          if (profileLinks.length === 0) {
+            this.onLog('❌ 未找到任何用户', 'warning')
+            this.onLog('尝试备用方法...', 'info')
+            
+            // 滚动加载更多内容
+            for (let i = 0; i < 3; i++) {
+              await window.electronAPI.evaluate(`
+                () => {
+                  window.scrollTo({
+                    top: document.body.scrollHeight,
+                    behavior: 'smooth'
+                  });
+                }
+              `)
+              
+              this.onLog('⏳ 等待新内容加载...', 'info')
+              await window.electronAPI.waitForTimeout(8000)
+              
+              profileLinks = await this.findNewProfiles()
+              if (profileLinks.length > 0) {
+                break
+              }
+              
+              this.onLog('📝 未找到新的用户，继续搜索...', 'info')
+              this.onLog('⏬ 滚动页面加载更多结果', 'info')
+            }
           }
 
-          this.onLog(`✨ 开始搜索用户 [关键词: ${this.config.searchQuery}]`, 'info')
-
-          const profileLinks = await this.findNewProfiles()
           if (profileLinks.length === 0) {
-            this.onLog('📝 未找到新的用户，继续搜索...', 'info')
-            // 滚动页面加载更多结果
-            this.onLog('⏬ 滚动页面加载更多结果', 'info')
-            await window.electronAPI.evaluate(`
-              () => {
-                return new Promise((resolve) => {
-                  let lastHeight = document.body.scrollHeight;
-                  
-                  // 先滚动到底部
-                  window.scrollTo(0, document.body.scrollHeight);
-                  
-                  // 等待一会儿看是否有新内容加载
-                  setTimeout(() => {
-                    const newHeight = document.body.scrollHeight;
-                    console.log('滚动前高度:', lastHeight, '滚动后高度:', newHeight);
-                    
-                    // 尝试点击"显示更多"按钮
-                    const showMoreButtons = document.querySelectorAll('div[role="button"][data-testid="cellInnerDiv"]');
-                    if (showMoreButtons.length > 0) {
-                      console.log('找到显示更多按钮');
-                      showMoreButtons.forEach(button => {
-                        if (button.textContent?.includes('显示') || button.textContent?.includes('Show')) {
-                          button.click();
-                        }
-                      });
-                    }
-                    
-                    resolve(newHeight > lastHeight);
-                  }, 2000);
-                });
-              }
-            `);
-            
-            // 等待新内容加载
-            this.onLog('⏳ 等待新内容加载...', 'info');
-            await window.electronAPI.waitForTimeout(5000);
             continue
           }
+
+          this.onLog(`🎯 找到 ${profileLinks.length} 个用户`, 'success')
           
-          this.onLog(`🎯 本次找到 ${profileLinks.length} 个新用户`, 'success')
-          
-          for (let link of profileLinks) {
+          // 处理找到的用户
+          for (const link of profileLinks) {
             if (!this.isRunning) break
-            if (this.visitedUrls.has(link)) {
-              this.onLog(`⏭️ 跳过已访问用户: ${link}`, 'info')
-              continue
-            }
+            if (this.visitedUrls.has(link)) continue
 
             try {
               this.onLog(`🔄 正在处理用户: ${link}`, 'info')
               await this.sendMessageToProfile(link)
               sentCount++
-              const runTime = Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
               this.onSentCount(sentCount)
+              
+              const runTime = Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
               this.onLog(`📊 统计信息 - 已发送: ${sentCount} | 运行时间: ${runTime}秒 | 平均: ${(sentCount / (runTime / 60)).toFixed(2)}条/分钟`, 'success')
+              
               await window.electronAPI.waitForTimeout(this.config.sendDelay)
             } catch (error: any) {
               this.onLog(`❌ 发送消息失败 ${link}: ${error.message}`, 'error')
@@ -209,294 +178,233 @@ export class TwitterService {
             this.visitedUrls.add(link)
           }
 
-          // 滚动页面加载更多结果
-          this.onLog('⏬ 滚动页面加载更多结果', 'info')
-          await window.electronAPI.evaluate(`
-            () => {
-              return new Promise((resolve) => {
-                let lastHeight = document.body.scrollHeight;
-                
-                // 先滚动到底部
-                window.scrollTo(0, document.body.scrollHeight);
-                
-                // 等待一会儿看是否有新内容加载
-                setTimeout(() => {
-                  const newHeight = document.body.scrollHeight;
-                  console.log('滚动前高度:', lastHeight, '滚动后高度:', newHeight);
-                  
-                  // 尝试点击"显示更多"按钮
-                  const showMoreButtons = document.querySelectorAll('div[role="button"][data-testid="cellInnerDiv"]');
-                  if (showMoreButtons.length > 0) {
-                    console.log('找到显示更多按钮');
-                    showMoreButtons.forEach(button => {
-                      if (button.textContent?.includes('显示') || button.textContent?.includes('Show')) {
-                        button.click();
-                      }
-                    });
-                  }
-                  
-                  resolve(newHeight > lastHeight);
-                }, 2000);
-              });
-            }
-          `);
-          
-          // 等待新内容加载
-          this.onLog('⏳ 等待新内容加载...', 'info');
-          await window.electronAPI.waitForTimeout(5000);
-          
-          // 重置重试计数
-          retryCount = 0
         } catch (error: any) {
-          retryCount++
-          this.onLog(`⚠️ 执行出错 (${retryCount}/${maxRetries}): ${error.message}`, 'error')
-          
-          if (retryCount >= maxRetries) {
-            throw new Error('连续失败次数过多，停止任务')
-          }
-          
-          // 等待一段时间后重试
-          this.onLog(`🕒 等待 5 秒后重试...`, 'warning')
-          await window.electronAPI.waitForTimeout(5000)
+          this.onLog(`❌ 执行出错: ${error.message}`, 'error')
+          await window.electronAPI.waitForTimeout(this.DELAYS.RETRY_DELAY)
         }
       }
     } catch (error: any) {
-      this.onLog(`❌ 任务执行出错: ${error.message}`, 'error')
+      this.onLog(`❌ 任务执行失败: ${error.message}`, 'error')
       throw error
     }
   }
 
   private async findNewProfiles(): Promise<string[]> {
     try {
-      // 使用字符串形式的函数来避免序列化问题
+      // 首先验证页面状态
+      const pageStatus = await window.electronAPI.evaluate(
+        "({tweets: document.querySelectorAll(\"article[data-testid='tweet']\").length, userNames: document.querySelectorAll(\"div[data-testid='User-Name']\").length})"
+      );
+      
+      console.log('页面元素统计:', pageStatus);
+
+      // 等待一下确保页面完全加载
+      await window.electronAPI.waitForTimeout(2000);
+
+      // 方法1：从推文中查找用户
       const result = await window.electronAPI.evaluate(`
-        () => {
-          const profileLinks = new Set();
+        (() => {
+          const users = [];
+          const seen = new Set();
           
-          // 查找所有用户卡片容器
-          const userContainers = document.querySelectorAll('div[class*="css-175oi2r r-eqz5dr r-16y2uox r-1wbh5a2"]');
-          console.log('找到用户容器数量:', userContainers.length);
+          // 从推文中查找
+          const tweets = document.querySelectorAll("article[data-testid='tweet']");
+          console.log('找到推文数量:', tweets.length);
           
-          for (const container of userContainers) {
-            try {
-              // 在容器内查找用户名元素
-              const userNameElements = container.querySelectorAll('div[class*="css-1rynq56 r-bcqeeo r-qvutc0 r-37j5jr r-a023e6 r-rjixqe r-b88u0q r-1awozwy r-6koalj r-18u37iz r-16y2uox r-1777fci"]');
-              
-              for (const elem of userNameElements) {
-                const text = elem.textContent?.trim();
-                if (text && text.startsWith('@')) {
-                  // 查找父级链接元素
-                  const parentLink = elem.closest('a[role="link"]');
-                  if (parentLink) {
-                    const href = parentLink.getAttribute('href');
-                    if (href && href.startsWith('/') && href.split('/').length === 2) {
-                      const username = href.substring(1);
-                      // 排除特殊用户名和已知非用户链接
-                      if (
-                        !['home', 'explore', 'notifications', 'messages', 'compose', 'search'].includes(username) &&
-                        !href.includes('/status/') &&
-                        !href.includes('/photo') &&
-                        !href.includes('/media')
-                      ) {
-                        console.log('找到用户:', username, '显示名称:', text);
-                        profileLinks.add('https://twitter.com' + href);
-                      }
-                    }
-                  }
+          for (const tweet of tweets) {
+            const links = tweet.querySelectorAll("a[role='link']");
+            for (const link of links) {
+              const text = link.textContent?.trim() || '';
+              if (text.startsWith('@')) {
+                const username = text.substring(1);
+                if (!seen.has(username) && !['home', 'explore', 'notifications', 'messages', 'compose'].includes(username)) {
+                  seen.add(username);
+                  users.push('https://twitter.com/' + username);
                 }
               }
-            } catch (e) {
-              console.error('处理用户容器时出错:', e);
             }
           }
-
-          // 如果没有找到用户，尝试查找推文中的用户
-          if (profileLinks.size === 0) {
-            const tweets = document.querySelectorAll('article[data-testid="tweet"]');
-            console.log('找到推文数量:', tweets.length);
-            
-            tweets.forEach(tweet => {
-              try {
-                const userNameElement = tweet.querySelector('div[class*="css-1rynq56 r-bcqeeo r-qvutc0"]');
-                if (userNameElement) {
-                  const text = userNameElement.textContent?.trim();
-                  if (text && text.startsWith('@')) {
-                    const parentLink = userNameElement.closest('a[role="link"]');
-                    if (parentLink) {
-                      const href = parentLink.getAttribute('href');
-                      if (href && href.startsWith('/') && href.split('/').length === 2) {
-                        const username = href.substring(1);
-                        if (
-                          !['home', 'explore', 'notifications', 'messages', 'compose', 'search'].includes(username) &&
-                          !href.includes('/status/') &&
-                          !href.includes('/photo') &&
-                          !href.includes('/media')
-                        ) {
-                          console.log('找到用户(通过推文):', username, '显示名称:', text);
-                          profileLinks.add('https://twitter.com' + href);
-                        }
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error('处理推文时出错:', e);
-              }
-            });
-          }
-
-          // 记录页面状态
-          console.log('当前页面用户卡片数量:', document.querySelectorAll('div[class*="css-175oi2r r-eqz5dr r-16y2uox r-1wbh5a2"]').length);
-          console.log('当前页面推文数量:', document.querySelectorAll('article[data-testid="tweet"]').length);
-
-          const links = Array.from(profileLinks);
-          console.log('最终找到的用户链接:', links);
-          return links;
-        }
+          
+          return users;
+        })()
       `);
 
-      if (Array.isArray(result)) {
-        this.onLog(`🔍 找到 ${result.length} 个用户链接`, 'info');
-        if (result.length > 0) {
-          this.onLog(`🔗 示例用户: ${result[0].split('/').pop()}`, 'info');
-          this.onLog(`📊 用户列表: ${result.map(url => url.split('/').pop()).join(', ')}`, 'info');
-        } else {
-          this.onLog('⚠️ 未找到任何用户，正在记录页面状态...', 'warning');
-          // 记录当前页面状态
-          await window.electronAPI.evaluate(`
-            () => {
-              const userCards = document.querySelectorAll('div[class*="css-175oi2r r-eqz5dr r-16y2uox r-1wbh5a2"]');
-              const tweets = document.querySelectorAll('article[data-testid="tweet"]');
-              console.log('页面状态:', {
-                userCards: userCards.length,
-                tweets: tweets.length,
-                bodyContent: document.body.innerHTML
-              });
+      if (!Array.isArray(result) || result.length === 0) {
+        console.log('未找到用户，尝试备用方法');
+        
+        // 方法2：从用户卡片中查找
+        const backupResult = await window.electronAPI.evaluate(`
+          (() => {
+            const users = [];
+            const seen = new Set();
+            
+            // 从用户卡片中查找
+            const userCells = document.querySelectorAll('div[data-testid="UserCell"]');
+            console.log('找到用户卡片:', userCells.length);
+            
+            for (const cell of userCells) {
+              const spans = cell.querySelectorAll('span');
+              for (const span of spans) {
+                const text = span.textContent?.trim() || '';
+                if (text.startsWith('@')) {
+                  const username = text.substring(1);
+                  if (!seen.has(username) && !['home', 'explore', 'notifications', 'messages', 'compose'].includes(username)) {
+                    seen.add(username);
+                    users.push('https://twitter.com/' + username);
+                  }
+                }
+              }
             }
-          `);
+            
+            // 如果还没找到，尝试其他方法
+            if (users.length === 0) {
+              const allSpans = document.querySelectorAll('span');
+              for (const span of allSpans) {
+                const text = span.textContent?.trim() || '';
+                if (text.startsWith('@')) {
+                  const username = text.substring(1);
+                  if (!seen.has(username) && !['home', 'explore', 'notifications', 'messages', 'compose'].includes(username)) {
+                    seen.add(username);
+                    users.push('https://twitter.com/' + username);
+                  }
+                }
+              }
+            }
+            
+            return users;
+          })()
+        `);
+
+        if (Array.isArray(backupResult) && backupResult.length > 0) {
+          console.log('使用备用方法找到的用户:', backupResult);
+          return backupResult;
         }
-        return result;
       }
-      return [];
+
+      return Array.isArray(result) ? result : [];
     } catch (error) {
-      console.error('查找用户失败:', error);
-      this.onLog(`❌ 查找用户时出错: ${error}`, 'error');
+      console.error('查找用户出错:', error);
       return [];
     }
   }
 
-  private async sendMessageToProfile(profileUrl: string) {
-    try {
-      this.onLog(`🌐 正在访问用户页面: ${profileUrl}`, 'info')
-      await window.electronAPI.goto(profileUrl)
-      
-      // 等待页面加载
-      const hasBody = await window.electronAPI.waitForSelector('body', { timeout: 50000 })
-      if (!hasBody) {
-        throw new Error('页面加载失败')
-      }
+  private async sendMessageToProfile(profileUrl: string): Promise<void> {
+    let retryCount = 0;
+    
+    while (retryCount < this.MAX_RETRIES) {
+      try {
+        this.onLog(`🌐 正在访问用户页面: ${profileUrl}`, 'info');
+        await window.electronAPI.goto(profileUrl);
+        
+        // 等待页面加载
+        await window.electronAPI.waitForTimeout(this.DELAYS.PAGE_LOAD);
+        
+        // 等待发送消息按钮出现
+        const hasMsgBtn = await window.electronAPI.evaluate(`
+          () => new Promise((resolve) => {
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            const checkButton = () => {
+              const buttons = document.querySelectorAll('div[class*="css-146c3p1"][class*="r-bcqeeo"][class*="r-qvutc0"]');
+              for (const btn of buttons) {
+                const svg = btn.querySelector('svg');
+                if (svg && svg.querySelector('path[d*="M2.504 21.866"]')) {
+                  resolve(true);
+                  return;
+                }
+              }
+              
+              if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(checkButton, ${this.DELAYS.BUTTON_CHECK});
+              } else {
+                resolve(false);
+              }
+            };
+            
+            checkButton();
+          })
+        `);
 
-      // 等待发送消息按钮出现（使用新的选择器）
-      const hasMsgBtn = await window.electronAPI.evaluate(`
-        () => new Promise((resolve) => {
-          let attempts = 0;
-          const maxAttempts = 10;
-          
-          const checkButton = () => {
-            // 使用新的选择器查找发送消息按钮
+        if (!hasMsgBtn) {
+          throw new Error('未找到发送消息按钮');
+        }
+
+        // 点击发送消息按钮
+        this.onLog(`✨ 找到发送按钮: ${profileUrl}`, 'info');
+        await window.electronAPI.evaluate(`
+          () => {
             const buttons = document.querySelectorAll('div[class*="css-146c3p1"][class*="r-bcqeeo"][class*="r-qvutc0"]');
             for (const btn of buttons) {
-              // 检查是否包含发送消息图标
               const svg = btn.querySelector('svg');
               if (svg && svg.querySelector('path[d*="M2.504 21.866"]')) {
-                resolve(true);
-                return;
+                const clickableParent = btn.closest('div[role="button"]');
+                if (clickableParent) {
+                  clickableParent.click();
+                  return true;
+                }
               }
             }
-            
-            if (attempts < maxAttempts) {
-              attempts++;
-              setTimeout(checkButton, 1000);
-            } else {
-              resolve(false);
-            }
-          };
-          
-          checkButton();
-        })
-      `);
-
-      if (!hasMsgBtn) {
-        throw new Error('未找到发送消息按钮')
-      }
-
-      // 点击发送消息按钮
-      this.onLog(`✨ 找到发送按钮: ${profileUrl}`, 'info')
-      await window.electronAPI.evaluate(`
-        () => {
-          const buttons = document.querySelectorAll('div[class*="css-146c3p1"][class*="r-bcqeeo"][class*="r-qvutc0"]');
-          for (const btn of buttons) {
-            const svg = btn.querySelector('svg');
-            if (svg && svg.querySelector('path[d*="M2.504 21.866"]')) {
-              // 找到最近的可点击父元素
-              const clickableParent = btn.closest('div[role="button"]');
-              if (clickableParent) {
-                clickableParent.click();
-                return true;
-              }
-            }
+            return false;
           }
-          return false;
-        }
-      `);
+        `);
 
-      // 等待消息输入框出现
-      const hasInput = await window.electronAPI.waitForSelector(
-        "div[role='textbox']",
-        { timeout: 50000 }
-      )
-
-      if (hasInput) {
-        // 输入消息
-        this.onLog(`⌨️ 正在输入消息...`, 'info')
-        await window.electronAPI.type(
+        // 等待消息输入框出现
+        await window.electronAPI.waitForTimeout(this.DELAYS.BUTTON_CHECK);
+        const hasInput = await window.electronAPI.waitForSelector(
           "div[role='textbox']",
-          this.config.messageTemplate
-        )
-        await window.electronAPI.waitForTimeout(2000)
+          { timeout: this.DELAYS.PAGE_LOAD }
+        );
 
-        // 等待发送按钮可用，多次尝试
-        let hasSendBtn = false
-        let attempts = 0
-        const maxAttempts = 5
+        if (hasInput) {
+          // 输入消息
+          this.onLog(`⌨️ 正在输入消息...`, 'info');
+          await window.electronAPI.type(
+            "div[role='textbox']",
+            this.config.messageTemplate
+          );
+          await window.electronAPI.waitForTimeout(this.DELAYS.BUTTON_CHECK);
 
-        while (attempts < maxAttempts && !hasSendBtn) {
-          hasSendBtn = await window.electronAPI.waitForSelector(
-            "div[role='button'][data-testid='dmComposerSendButton']:not([aria-disabled='true'])",
-            { timeout: 5000 }
-          )
-          if (!hasSendBtn) {
-            attempts++
-            this.onLog(`⏳ 等待发送按钮可用 (${attempts}/${maxAttempts})...`, 'info')
-            await window.electronAPI.waitForTimeout(2000)
+          // 等待发送按钮可用
+          let hasSendBtn = false;
+          let attempts = 0;
+          const maxAttempts = 5;
+
+          while (attempts < maxAttempts && !hasSendBtn) {
+            hasSendBtn = await window.electronAPI.waitForSelector(
+              "div[role='button'][data-testid='dmComposerSendButton']:not([aria-disabled='true'])",
+              { timeout: 5000 }
+            );
+            if (!hasSendBtn) {
+              attempts++;
+              this.onLog(`⏳ 等待发送按钮可用 (${attempts}/${maxAttempts})...`, 'info');
+              await window.electronAPI.waitForTimeout(this.DELAYS.BUTTON_CHECK);
+            }
           }
-        }
 
-        if (hasSendBtn) {
-          await window.electronAPI.click(
-            "div[role='button'][data-testid='dmComposerSendButton']:not([aria-disabled='true'])"
-          )
-          this.onLog(`✅ 消息已发送: ${profileUrl}`, 'success')
-          // 等待消息发送完成
-          await window.electronAPI.waitForTimeout(5000)
+          if (hasSendBtn) {
+            await window.electronAPI.click(
+              "div[role='button'][data-testid='dmComposerSendButton']:not([aria-disabled='true'])"
+            );
+            this.onLog(`✅ 消息已发送: ${profileUrl}`, 'success');
+            await window.electronAPI.waitForTimeout(this.DELAYS.MESSAGE_SEND);
+            return;
+          } else {
+            throw new Error('发送按钮未启用');
+          }
         } else {
-          throw new Error('发送按钮未启用')
+          throw new Error('未找到消息输入框');
         }
-      } else {
-        throw new Error('未找到消息输入框')
+      } catch (error: any) {
+        retryCount++;
+        if (retryCount < this.MAX_RETRIES) {
+          this.onLog(`⚠️ 发送失败，等待重试 (${retryCount}/${this.MAX_RETRIES}): ${error.message}`, 'warning');
+          await window.electronAPI.waitForTimeout(this.DELAYS.RETRY_DELAY);
+        } else {
+          throw new Error(`发送消息失败: ${error.message}`);
+        }
       }
-    } catch (error: any) {
-      throw new Error(`发送消息失败: ${error.message}`)
     }
   }
 
