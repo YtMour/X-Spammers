@@ -1,39 +1,32 @@
 {
-    "compilerOptions": {
-        "target": "ES2020",
-        "useDefineForClassFields": true,
-        "module": "ESNext",
-        "lib": ["ES2020", "DOM", "DOM.Iterable"],
-        "skipLibCheck": true,
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "types": ["node"],
 
-        /* Bundler mode */
-        "moduleResolution": "node",
-        "allowImportingTsExtensions": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "noEmit": true,
-        "jsx": "preserve",
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
 
-        /* Linting */
-        "strict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true,
-
-        /* Path aliases */
-        "baseUrl": ".",
-        "paths": {
-            "@/*": ["src/*"]
-        },
-
-        /* Type declarations */
-        "types": ["vite/client", "node", "electron"]
-    },
-    "include": [
-        "src/**/*.ts",
-        "src/**/*.d.ts",
-        "src/**/*.tsx",
-        "src/**/*.vue"
-    ],
-    "references": [{ "path": "./tsconfig.node.json" }]
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "electron/**/*.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
