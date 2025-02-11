@@ -55,3 +55,5 @@ components.d.ts
 
 # 敏感数据文件
 /cookies.json
+/dist-electron
+/dist
