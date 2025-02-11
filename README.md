@@ -68,8 +68,27 @@ cp cookies.template.json cookies.json
 
 ### 3. 安装依赖
 
+如果下载速度慢，建议使用以下方式之一：
+
+**方式一：使用淘宝镜像源**
 ```bash
+# 设置淘宝镜像源
+npm config set registry https://registry.npmmirror.com
+
+# 安装依赖
 npm install
+
+# 如果想恢复官方源，可以使用：
+# npm config set registry https://registry.npmjs.org
+```
+
+**方式二：使用 cnpm**
+```bash
+# 安装 cnpm
+npm install -g cnpm --registry=https://registry.npmmirror.com
+
+# 使用 cnpm 安装依赖
+cnpm install
 ```
 
 ### 4. 开发模式

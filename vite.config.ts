@@ -5,7 +5,11 @@ import renderer from 'vite-plugin-electron-renderer'
 import { resolve } from 'path'
 import Unocss from 'unocss/vite'
 import { presetUno, presetAttributify, presetIcons } from 'unocss'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
@@ -26,9 +30,27 @@ export default defineConfig({
     electron([
       {
         entry: 'src/main/index.ts',
-      },
+        onstart(options) {
+          options.startup()
+        },
+        vite: {
+          build: {
+            outDir: 'dist/main',
+            minify: false,
+            rollupOptions: {
+              external: ['electron']
+            }
+          },
+        },
+      }
     ]),
     renderer(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+    }),
   ],
   resolve: {
     alias: {
@@ -43,7 +65,19 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: 'dist/renderer',
     emptyOutDir: true,
+    minify: false,
+    sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/renderer/index.html'),
+      },
+    },
+  },
+  base: process.env.NODE_ENV === 'development' ? '/' : './',
+  server: {
+    port: 5173,
+    strictPort: true,
   },
 }) 

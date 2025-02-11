@@ -4,15 +4,15 @@
   "description": "Twitter 自动化私信工具 - 图形界面版",
   "main": "dist/main/index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "dev": "chcp 65001 && vite",
+    "start": "electron .",
+    "build": "vue-tsc --noEmit && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "electron:dev": "electron .",
-    "electron:build": "electron-builder",
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make"
+    "electron:dev": "vite build && electron .",
+    "electron:build": "vue-tsc --noEmit && vite build && electron-builder",
+    "electron:preview": "electron .",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.x-spammers.app",
@@ -25,49 +25,66 @@
       "package.json"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "public/icon.ico"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "public/icon.icns"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "public/icon.png"
-    }
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/puppeteer/.local-chromium/**/*"
+    ]
   },
   "keywords": [],
   "author": "",
   "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
-    "@electron-toolkit/utils": "^2.0.0",
-    "@iconify/vue": "^4.1.1",
-    "@vueuse/core": "^10.2.1",
-    "electron-store": "^8.1.0",
-    "naive-ui": "^2.34.4",
-    "pinia": "^2.1.4",
-    "puppeteer": "^19.11.0",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@element-plus/icons-vue": "^2.3.1",
+    "@iconify/vue": "^4.3.0",
+    "@vueuse/core": "^12.5.0",
+    "electron-store": "^10.0.1",
+    "element-plus": "^2.9.4",
+    "naive-ui": "^2.41.0",
+    "pinia": "^2.3.1",
+    "puppeteer": "^24.2.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "vue": "^3.3.4"
+    "vue": "^3.5.13"
   },
   "devDependencies": {
-    "@types/node": "^18.16.0",
-    "@types/puppeteer": "^7.0.4",
-    "@types/puppeteer-core": "^7.0.4",
-    "@unocss/preset-attributify": "^0.53.4",
-    "@unocss/preset-icons": "^0.53.4",
-    "@unocss/preset-uno": "^0.53.4",
-    "@vitejs/plugin-vue": "^4.2.3",
-    "@vue/compiler-sfc": "^3.3.4",
-    "electron": "^25.0.0",
-    "electron-builder": "^24.6.4",
-    "sass": "^1.63.6",
-    "typescript": "^5.0.2",
-    "unocss": "^0.53.4",
-    "vite": "^4.4.5",
-    "vite-plugin-electron": "^0.14.0",
-    "vue-tsc": "^1.8.5"
+    "@types/electron": "^1.4.38",
+    "@types/node": "^22.13.1",
+    "@unocss/preset-attributify": "^65.4.3",
+    "@unocss/preset-icons": "^65.4.3",
+    "@unocss/preset-uno": "^65.4.3",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/compiler-sfc": "^3.5.13",
+    "electron": "^25.8.0",
+    "electron-builder": "^25.1.8",
+    "sass": "^1.84.0",
+    "typescript": "^5.7.3",
+    "unocss": "^65.4.3",
+    "unplugin-auto-import": "^19.0.0",
+    "unplugin-vue-components": "^28.0.0",
+    "vite": "^6.1.0",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vue-tsc": "^2.2.0"
   }
 }

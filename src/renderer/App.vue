@@ -1,5 +1,5 @@
 <template>
-  <n-config-provider :theme="darkTheme">
+  <n-config-provider :theme="isDark ? darkTheme : null">
     <n-message-provider>
       <div class="app-container">
         <n-layout>
@@ -8,10 +8,10 @@
               <h1>X-Spammers 控制面板</h1>
               <n-switch v-model:value="isDark">
                 <template #checked>
-                  <i inline-class="i-carbon-moon" />
+                  <n-icon><moon-icon /></n-icon>
                 </template>
                 <template #unchecked>
-                  <i inline-class="i-carbon-sun" />
+                  <n-icon><sun-icon /></n-icon>
                 </template>
               </n-switch>
             </div>
@@ -60,7 +60,7 @@
                   class="action-button"
                 >
                   <template #icon>
-                    <i inline-class="i-carbon-play-filled" />
+                    <n-icon><play-icon /></n-icon>
                   </template>
                   启动任务
                 </n-button>
@@ -71,7 +71,7 @@
                   class="action-button"
                 >
                   <template #icon>
-                    <i inline-class="i-carbon-stop-filled" />
+                    <n-icon><stop-icon /></n-icon>
                   </template>
                   停止任务
                 </n-button>
@@ -107,8 +107,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ipcRenderer } from 'electron'
-import { darkTheme, useMessage } from 'naive-ui'
-import type { FormInst, FormRules } from 'naive-ui'
+import { 
+  darkTheme, 
+  useMessage,
+  type FormInst, 
+  type FormRules,
+  NIcon
+} from 'naive-ui'
+import { 
+  MoonFilled as MoonIcon, 
+  SunFilled as SunIcon,
+  PlayArrowRounded as PlayIcon,
+  StopRounded as StopIcon
+} from '@vicons/material'
 
 interface Config {
   searchQuery: string

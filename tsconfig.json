@@ -7,7 +7,7 @@
         "skipLibCheck": true,
 
         /* Bundler mode */
-        "moduleResolution": "bundler",
+        "moduleResolution": "node",
         "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
@@ -27,7 +27,7 @@
         },
 
         /* Type declarations */
-        "types": ["vite/client", "node"]
+        "types": ["vite/client", "node", "electron"]
     },
     "include": [
         "src/**/*.ts",
