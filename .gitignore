@@ -40,7 +40,6 @@ logs
 
 # 运行时数据
 error_*.png
-cookies.json
 
 # Electron 打包
 /out
@@ -52,7 +51,7 @@ cookies.json
 
 # 自动生成的文件
 auto-imports.d.ts
-components.d.ts 
-cookies.json
-cookies.json
-cookies.json
+components.d.ts
+
+# 敏感数据文件
+/cookies.json
