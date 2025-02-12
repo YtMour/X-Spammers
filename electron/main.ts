@@ -37,6 +37,7 @@ function createWindow() {
     frame: true,
     resizable: false,
     maximizable: false,
+    icon: path.join(PUBLIC_PATH, 'icons.png'),
     webPreferences: {
       preload: PRELOAD_PATH,
       nodeIntegration: false,
