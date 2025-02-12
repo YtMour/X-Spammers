@@ -33,6 +33,8 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1280,
     height: 800,
+    autoHideMenuBar: true,
+    frame: true,
     webPreferences: {
       preload: PRELOAD_PATH,
       nodeIntegration: false,
