@@ -192,7 +192,7 @@ export class TwitterService {
               // 只有成功发送消息才计数和记录
               if (result.success) {
               sentCount++
-                this.onSentCount(sentCount)
+              this.onSentCount(sentCount)
                 
                 this.stats.successCount++
                 const runTime = Math.floor((Date.now() - this.stats.startTime) / 1000)
@@ -239,7 +239,7 @@ export class TwitterService {
           const users = new Set();
           
           // 从推文中提取作者
-          const tweets = document.querySelectorAll("article[data-testid='tweet']");
+            const tweets = document.querySelectorAll("article[data-testid='tweet']");
           
           for (const tweet of tweets) {
             try {
@@ -284,11 +284,11 @@ export class TwitterService {
   }
 
   private async sendMessageToProfile(profileUrl: string): Promise<{ success: boolean; message?: string }> {
-    try {
+      try {
       this.onLog(`🌐 正在访问用户页面: ${profileUrl}`, 'info')
       await window.electronAPI.goto(profileUrl)
-      
-      // 等待页面加载
+        
+        // 等待页面加载
       await window.electronAPI.waitForTimeout(this.DELAYS.PAGE_LOAD)
 
       // 首先检查账号状态

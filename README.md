@@ -2,7 +2,7 @@
 
 > ⚠️ **重要安全提醒**：本项目使用 `cookies.json` 存储 Twitter 登录凭证。该文件包含敏感信息，已被添加到 `.gitignore` 中，永远不会被提交到代码仓库。请勿分享或提交此文件。
 
-一个基于 Electron + Vue 3 开发的 Twitter 自动化私信工具，提供简洁的图形界面操作。该工具可以自动向特定搜索结果页面的用户发送私信。
+一个基于 Electron + Vue3 + TypeScript 开发的 Twitter 自动化私信工具，提供简洁的图形界面操作。该工具可以自动向特定搜索结果页面的用户发送私信。
 
 ## ⚠️ 免责声明
 
@@ -15,14 +15,42 @@
 
 **使用本工具造成的任何后果由使用者自行承担。**
 
+## 🌟 主要功能
+
+- 🤖 自动搜索并处理 Twitter 用户
+- 📨 自动发送私信功能（测试模式）
+- 🔄 智能重试机制
+- 📊 详细的统计信息
+- 🎯 精确的用户状态检测
+- 🔒 安全的 Cookie 管理
+
 ## ✨ 功能特性
 
-- 🤖 自动化发送私信
-- 🔍 支持关键词搜索
-- 🕒 可配置发送延迟
-- 📊 实时任务状态监控
-- 📝 详细的操作日志
-- 🎨 简洁美观的界面
+- 🤖 自动化功能
+  - 支持关键词搜索
+  - 可配置发送延迟
+  - 实时任务状态监控
+  - 详细的操作日志
+  - 简洁美观的界面
+
+- 💡 智能用户检测
+  - 验证状态检查
+  - 受保护账号检测
+  - 私信权限验证
+  - 按钮状态智能判断
+
+- 🎯 高效的消息处理
+  - 并行选择器检查
+  - 优化的等待机制
+  - 智能的状态检测
+  - 自动重试机制
+
+- 📊 完整的统计系统
+  - 总处理数量
+  - 成功率统计
+  - 各类失败原因统计
+  - 运行时间统计
+  - 平均处理速度
 
 ## 🔧 技术栈
 
@@ -37,6 +65,7 @@
 ## 📋 使用前提
 
 - Node.js 16.x 或更高版本
+- Google Chrome 浏览器
 - Twitter 账号及 Cookies
 - 目标用户必须允许接收来自非关注者的私信
 - 对于限制私信的用户，需要 Twitter Plus 订阅才能发送
@@ -68,15 +97,35 @@ cp cookies.template.json cookies.json
 4. 将导出的 cookies 内容替换到 `cookies.json` 中
 
 ### 3. 开发调试
-
 ```bash
 npm run electron:dev
 ```
 
 ### 4. 构建应用
-
 ```bash
 npm run electron:build
+```
+
+## 🛠️ 配置说明
+
+### Twitter 配置
+```typescript
+interface TwitterConfig {
+  searchQuery: string;      // 搜索关键词
+  messageTemplate: string;  // 消息模板
+  sendDelay: number;       // 发送延迟(ms)
+}
+```
+
+### 延迟配置
+```typescript
+const DELAYS = {
+  PAGE_LOAD: 10000,      // 页面加载等待时间
+  SCROLL_INTERVAL: 8000, // 滚动间隔
+  BUTTON_CHECK: 3000,    // 按钮检查间隔
+  MESSAGE_SEND: 5000,    // 发送消息后等待时间
+  RETRY_DELAY: 15000     // 错误重试等待时间
+}
 ```
 
 ## 💻 使用说明
@@ -91,6 +140,27 @@ npm run electron:build
    - 点击"停止任务"暂停
    - 实时查看运行状态
    - 查看操作日志
+
+## 🔍 状态说明
+
+工具会自动检测以下状态：
+- ✅ 可发送状态
+- ⚠️ 需要验证
+- 🔒 受保护账号
+- ⛔ 已屏蔽
+- ❌ 无法发送
+
+## 📊 统计指标
+
+- 总尝试次数
+- 成功发送数
+- 需要验证数
+- 受保护账号数
+- 已屏蔽账号数
+- 无按钮账号数
+- 错误次数
+- 运行时间
+- 平均处理速度
 
 ## 🔒 重要注意事项
 
@@ -113,8 +183,8 @@ npm run electron:build
 - 保持对 Twitter 政策更新的关注
 
 ## 📝 许可证
-
-本项目采用 [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.en.html) 许可证。
+本项目采用 [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/
+agpl-3.0.en.html) 许可证。
 
 这意味着：
 - ✅ 您可以自由使用、修改和分发本软件
