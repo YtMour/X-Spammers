@@ -239,9 +239,11 @@ h2 {
 
 .textarea-container {
   position: relative;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #f7f9f9;
   transition: all 0.3s ease;
+  overflow: hidden;
+  display: flex;
   
   @media (prefers-color-scheme: dark) {
     background: #273340;
@@ -258,10 +260,10 @@ h2 {
 
 textarea {
   width: 100%;
-  padding: 20px;
+  padding: 16px;
   border: 2px solid transparent;
-  border-radius: 16px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 14px;
   line-height: 1.6;
   color: #0f1419;
   background: transparent;
@@ -269,6 +271,12 @@ textarea {
   transition: all 0.3s ease;
   position: relative;
   z-index: 2;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(29, 155, 240, 0.3) transparent;
+  height: auto;
+  min-height: 120px;
+  max-height: 200px;
   
   @media (prefers-color-scheme: dark) {
     color: #fff;
@@ -278,7 +286,7 @@ textarea {
     outline: none;
     border-color: #1d9bf0;
     background: transparent;
-    box-shadow: 0 0 0 4px rgba(29, 155, 240, 0.1);
+    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.1);
   }
   
   &::placeholder {
@@ -286,6 +294,24 @@ textarea {
     
     @media (prefers-color-scheme: dark) {
       color: #8899a6;
+    }
+  }
+  
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(29, 155, 240, 0.3);
+    border-radius: 4px;
+    
+    &:hover {
+      background-color: rgba(29, 155, 240, 0.5);
     }
   }
   
