@@ -2,11 +2,17 @@
   "name": "x-spammers",
   "private": true,
   "version": "1.0.0",
+  "description": "X-Spammers - X (Twitter) 自动化私信工具",
+  "author": {
+    "name": "X-Spammers",
+    "email": "X-Spammers@example.com"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && electron-builder",
+    "build": "vite build && electron-builder --win --x64",
+    "build:win": "vite build && electron-builder --win --x64",
     "preview": "vite preview",
-    "rebuild": "electron-rebuild -f -w puppeteer-core"
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "pinia": "^2.0.33",
@@ -21,7 +27,6 @@
     "@vitejs/plugin-vue": "^4.1.0",
     "electron": "^23.1.4",
     "electron-builder": "^23.6.0",
-    "electron-rebuild": "^3.2.7",
     "sass": "^1.84.0",
     "typescript": "^5.0.2",
     "vite": "^4.2.0",
@@ -31,7 +36,7 @@
   },
   "main": "dist-electron/main.js",
   "build": {
-    "appId": "com.x.spammers",
+    "appId": "com.x-spammers",
     "productName": "X-Spammers",
     "directories": {
       "output": "release/${version}"
@@ -40,6 +45,7 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
+    "asar": true,
     "win": {
       "target": [
         {
@@ -49,22 +55,9 @@
           ]
         }
       ],
-      "icon": "public/icons.png",
-      "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ],
-      "icon": "public/icons.png",
-      "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ],
-      "icon": "public/icons.png",
-      "artifactName": "${productName}-Linux-${version}.${ext}"
+      "icon": "public/icons.ico",
+      "artifactName": "X-Spammers-Windows-${version}-Setup.${ext}",
+      "publisherName": "X-Spammers"
     },
     "nsis": {
       "oneClick": false,
@@ -74,11 +67,16 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "X-Spammers",
-      "installerIcon": "public/icons.png",
-      "uninstallerIcon": "public/icons.png",
-      "installerHeaderIcon": "public/icons.png",
+      "installerIcon": "public/icons.ico",
+      "uninstallerIcon": "public/icons.ico",
+      "installerHeaderIcon": "public/icons.ico",
       "menuCategory": true,
-      "displayLanguageSelector": true
-    }
+      "displayLanguageSelector": true,
+      "unicode": true,
+      "runAfterFinish": true,
+      "artifactName": "X-Spammers-Setup-${version}.${ext}"
+    },
+    "publish": null,
+    "remoteBuild": false
   }
 }
