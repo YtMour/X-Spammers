@@ -35,6 +35,8 @@ function createWindow() {
     height: 800,
     autoHideMenuBar: true,
     frame: true,
+    resizable: false,
+    maximizable: false,
     webPreferences: {
       preload: PRELOAD_PATH,
       nodeIntegration: false,
