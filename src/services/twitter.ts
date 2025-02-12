@@ -4,6 +4,7 @@ import { TwitterConfig } from '../types/twitter'
 export class TwitterService {
   private isRunning: boolean = false
   private visitedUrls: Set<string> = new Set()
+  private visitTimes: Map<string, number> = new Map()
   private config: TwitterConfig
   private onLog: (message: string, type: 'info' | 'success' | 'warning' | 'error') => void
   private onSentCount: (count: number) => void
@@ -120,7 +121,7 @@ export class TwitterService {
           // 开始查找用户
           this.onLog(`✨ 开始搜索用户 [关键词: ${this.config.searchQuery}]`, 'info')
           let profileLinks = await this.findNewProfiles()
-          
+
           // 如果没有找到用户，尝试滚动加载更多
           if (profileLinks.length === 0) {
             this.onLog('❌ 未找到任何用户', 'warning')
@@ -128,7 +129,7 @@ export class TwitterService {
             
             // 滚动加载更多内容
             for (let i = 0; i < 3; i++) {
-              await window.electronAPI.evaluate(`
+            await window.electronAPI.evaluate(`
                 () => {
                   window.scrollTo({
                     top: document.body.scrollHeight,
@@ -153,29 +154,35 @@ export class TwitterService {
           if (profileLinks.length === 0) {
             continue
           }
-
+          
           this.onLog(`🎯 找到 ${profileLinks.length} 个用户`, 'success')
           
           // 处理找到的用户
           for (const link of profileLinks) {
             if (!this.isRunning) break
-            if (this.visitedUrls.has(link)) continue
+            if (this.visitedUrls.has(link)) {
+              this.onLog(`⏭️ 跳过已处理的用户: ${link}`, 'info')
+              continue
+            }
 
             try {
               this.onLog(`🔄 正在处理用户: ${link}`, 'info')
-              await this.sendMessageToProfile(link)
-              sentCount++
-              this.onSentCount(sentCount)
+              const result = await this.sendMessageToProfile(link)
               
+              // 只有成功发送消息才计数和记录
+              if (result.success) {
+              sentCount++
+                this.onSentCount(sentCount)
+                
               const runTime = Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
               this.onLog(`📊 统计信息 - 已发送: ${sentCount} | 运行时间: ${runTime}秒 | 平均: ${(sentCount / (runTime / 60)).toFixed(2)}条/分钟`, 'success')
-              
+                
               await window.electronAPI.waitForTimeout(this.config.sendDelay)
+                this.visitedUrls.add(link) // 只记录成功发送的用户
+              }
             } catch (error: any) {
               this.onLog(`❌ 发送消息失败 ${link}: ${error.message}`, 'error')
             }
-
-            this.visitedUrls.add(link)
           }
 
         } catch (error: any) {
@@ -191,220 +198,275 @@ export class TwitterService {
 
   private async findNewProfiles(): Promise<string[]> {
     try {
-      // 首先验证页面状态
-      const pageStatus = await window.electronAPI.evaluate(
-        "({tweets: document.querySelectorAll(\"article[data-testid='tweet']\").length, userNames: document.querySelectorAll(\"div[data-testid='User-Name']\").length})"
-      );
+      // 等待推文加载
+      await window.electronAPI.waitForSelector("article[data-testid='tweet']", { timeout: 10000 })
       
-      console.log('页面元素统计:', pageStatus);
-
-      // 等待一下确保页面完全加载
-      await window.electronAPI.waitForTimeout(2000);
-
-      // 方法1：从推文中查找用户
+      // 提取用户信息
       const result = await window.electronAPI.evaluate(`
         (() => {
-          const users = [];
-          const seen = new Set();
+          const users = new Set();
           
-          // 从推文中查找
+          // 从推文中提取作者
           const tweets = document.querySelectorAll("article[data-testid='tweet']");
-          console.log('找到推文数量:', tweets.length);
           
           for (const tweet of tweets) {
-            const links = tweet.querySelectorAll("a[role='link']");
-            for (const link of links) {
-              const text = link.textContent?.trim() || '';
-              if (text.startsWith('@')) {
-                const username = text.substring(1);
-                if (!seen.has(username) && !['home', 'explore', 'notifications', 'messages', 'compose'].includes(username)) {
-                  seen.add(username);
-                  users.push('https://twitter.com/' + username);
+            try {
+              const authorElement = tweet.querySelector("div[data-testid='User-Name']");
+              if (authorElement) {
+                const authorLink = authorElement.querySelector("a[role='link']");
+                if (authorLink) {
+                  const href = authorLink.getAttribute('href');
+                  if (href && href.startsWith('/')) {
+                    const username = href.split('/')[1];
+                    // 过滤系统账号和推广内容
+                    if (username && 
+                        !['home', 'explore', 'notifications', 'messages', 'compose', 'i'].includes(username) &&
+                        !tweet.querySelector("[data-testid='tweet-promoted-indicator']")) {
+                      users.add('https://twitter.com/' + username);
+                    }
+                  }
                 }
               }
+            } catch (e) {
+              console.error('处理推文时出错:', e);
+              continue;
             }
           }
           
-          return users;
+          return Array.from(users);
         })()
-      `);
+      `)
 
-      if (!Array.isArray(result) || result.length === 0) {
-        console.log('未找到用户，尝试备用方法');
-        
-        // 方法2：从用户卡片中查找
-        const backupResult = await window.electronAPI.evaluate(`
-          (() => {
-            const users = [];
-            const seen = new Set();
-            
-            // 从用户卡片中查找
-            const userCells = document.querySelectorAll('div[data-testid="UserCell"]');
-            console.log('找到用户卡片:', userCells.length);
-            
-            for (const cell of userCells) {
-              const spans = cell.querySelectorAll('span');
-              for (const span of spans) {
-                const text = span.textContent?.trim() || '';
-                if (text.startsWith('@')) {
-                  const username = text.substring(1);
-                  if (!seen.has(username) && !['home', 'explore', 'notifications', 'messages', 'compose'].includes(username)) {
-                    seen.add(username);
-                    users.push('https://twitter.com/' + username);
-                  }
-                }
-              }
-            }
-            
-            // 如果还没找到，尝试其他方法
-            if (users.length === 0) {
-              const allSpans = document.querySelectorAll('span');
-              for (const span of allSpans) {
-                const text = span.textContent?.trim() || '';
-                if (text.startsWith('@')) {
-                  const username = text.substring(1);
-                  if (!seen.has(username) && !['home', 'explore', 'notifications', 'messages', 'compose'].includes(username)) {
-                    seen.add(username);
-                    users.push('https://twitter.com/' + username);
-                  }
-                }
-              }
-            }
-            
-            return users;
-          })()
-        `);
-
-        if (Array.isArray(backupResult) && backupResult.length > 0) {
-          console.log('使用备用方法找到的用户:', backupResult);
-          return backupResult;
-        }
-      }
-
-      return Array.isArray(result) ? result : [];
+      // 过滤已访问的用户
+      const newUsers = Array.isArray(result) ? 
+        result.filter(url => !this.visitedUrls.has(url)) : 
+        []
+      
+      console.log(`总共找到 ${result?.length || 0} 个用户，其中 ${newUsers.length} 个新用户`)
+      return newUsers
+      
     } catch (error) {
-      console.error('查找用户出错:', error);
-      return [];
+      console.error('查找用户出错:', error)
+      return []
     }
   }
 
-  private async sendMessageToProfile(profileUrl: string): Promise<void> {
-    let retryCount = 0;
-    
-    while (retryCount < this.MAX_RETRIES) {
-      try {
-        this.onLog(`🌐 正在访问用户页面: ${profileUrl}`, 'info');
-        await window.electronAPI.goto(profileUrl);
-        
-        // 等待页面加载
-        await window.electronAPI.waitForTimeout(this.DELAYS.PAGE_LOAD);
-        
-        // 等待发送消息按钮出现
-        const hasMsgBtn = await window.electronAPI.evaluate(`
-          () => new Promise((resolve) => {
-            let attempts = 0;
-            const maxAttempts = 10;
-            
-            const checkButton = () => {
-              const buttons = document.querySelectorAll('div[class*="css-146c3p1"][class*="r-bcqeeo"][class*="r-qvutc0"]');
-              for (const btn of buttons) {
-                const svg = btn.querySelector('svg');
-                if (svg && svg.querySelector('path[d*="M2.504 21.866"]')) {
-                  resolve(true);
-                  return;
-                }
-              }
+  private async sendMessageToProfile(profileUrl: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      this.onLog(`🌐 正在访问用户页面: ${profileUrl}`, 'info')
+      await window.electronAPI.goto(profileUrl)
+      
+      // 等待页面加载
+      await window.electronAPI.waitForTimeout(this.DELAYS.PAGE_LOAD)
+
+      // 首先检查账号状态
+      const accountStatus = await window.electronAPI.evaluate(`
+        (() => {
+          // 检查是否需要验证
+          const verificationText = document.querySelector('div[dir="ltr"]')?.textContent || '';
+          if (verificationText.includes('cannot message this user because you are not verified')) {
+            return { status: 'verification_required' };
+          }
+
+          // 检查是否是受保护账号
+          const isProtected = document.querySelector('div[data-testid="socialContext"]')?.textContent?.includes('受保护');
+          if (isProtected) {
+            return { status: 'protected' };
+          }
+
+          // 检查是否无法发送私信
+          const pageText = document.body.textContent || '';
+          if (pageText.includes('无法发送私信') || 
+              pageText.includes('你无法发送') || 
+              pageText.includes('不接收私信') ||
+              pageText.includes('Cannot send') ||
+              pageText.includes('Message unavailable')) {
+            return { status: 'blocked' };
+          }
+
+          // 检查私信按钮
+          const button = document.querySelector('button[data-testid="sendDMFromProfile"]') || 
+                        document.querySelector('button[aria-label="Message"]') ||
+                        document.querySelector('button svg path[d*="M1.998 5.5c0-1.381"]')?.closest('button');
+          
+          if (!button) {
+            return { status: 'no_button' };
+          }
+
+          return {
+            status: 'ready',
+            buttonInfo: {
+              disabled: button.disabled,
+              ariaDisabled: button.getAttribute('aria-disabled'),
+              visible: button.offsetParent !== null
+            }
+          };
+        })()
+      `)
+
+      // 根据账号状态处理
+      switch (accountStatus.status) {
+        case 'verification_required':
+          this.onLog(`⚠️ 该用户需要验证才能发送私信: ${profileUrl}`, 'warning')
+          return { success: false, message: '需要验证才能发送私信' }
+
+        case 'protected':
+          this.onLog(`⚠️ 跳过受保护的账号: ${profileUrl}`, 'warning')
+          return { success: false, message: '受保护的账号' }
+
+        case 'blocked':
+          this.onLog(`⚠️ 该用户无法接收私信: ${profileUrl}`, 'warning')
+          return { success: false, message: '无法接收私信' }
+
+        case 'no_button':
+          this.onLog(`⚠️ 未找到私信按钮: ${profileUrl}`, 'warning')
+          return { success: false, message: '未找到私信按钮' }
+
+        case 'ready':
+          if (accountStatus.buttonInfo.disabled || !accountStatus.buttonInfo.visible) {
+            this.onLog(`⚠️ 私信按钮不可用: ${profileUrl}`, 'warning')
+            return { success: false, message: '私信按钮不可用' }
+          }
+
+          // 点击发送消息按钮后，等待消息框完全加载
+          this.onLog(`✨ 找到发送按钮: ${profileUrl}`, 'info')
+          const clicked = await window.electronAPI.evaluate(`
+            (() => {
+              const button = document.querySelector('button[data-testid="sendDMFromProfile"]') || 
+                            document.querySelector('button[aria-label="Message"]') ||
+                            document.querySelector('button svg path[d*="M1.998 5.5c0-1.381"]')?.closest('button');
               
-              if (attempts < maxAttempts) {
-                attempts++;
-                setTimeout(checkButton, ${this.DELAYS.BUTTON_CHECK});
-              } else {
-                resolve(false);
-              }
-            };
-            
-            checkButton();
-          })
-        `);
-
-        if (!hasMsgBtn) {
-          throw new Error('未找到发送消息按钮');
-        }
-
-        // 点击发送消息按钮
-        this.onLog(`✨ 找到发送按钮: ${profileUrl}`, 'info');
-        await window.electronAPI.evaluate(`
-          () => {
-            const buttons = document.querySelectorAll('div[class*="css-146c3p1"][class*="r-bcqeeo"][class*="r-qvutc0"]');
-            for (const btn of buttons) {
-              const svg = btn.querySelector('svg');
-              if (svg && svg.querySelector('path[d*="M2.504 21.866"]')) {
-                const clickableParent = btn.closest('div[role="button"]');
-                if (clickableParent) {
-                  clickableParent.click();
+              if (button) {
+                try {
+                  button.click();
                   return true;
+                } catch (e) {
+                  console.error('点击按钮时出错:', e);
+                  return false;
                 }
               }
-            }
-            return false;
+              return false;
+            })()
+          `)
+
+          if (!clicked) {
+            this.onLog(`⚠️ 点击私信按钮失败: ${profileUrl}`, 'warning')
+            return { success: false, message: '点击私信按钮失败' }
           }
-        `);
 
-        // 等待消息输入框出现
-        await window.electronAPI.waitForTimeout(this.DELAYS.BUTTON_CHECK);
-        const hasInput = await window.electronAPI.waitForSelector(
-          "div[role='textbox']",
-          { timeout: this.DELAYS.PAGE_LOAD }
-        );
+          // 等待消息对话框出现并完全加载
+          this.onLog(`⌛ 等待消息框加载...`, 'info')
+          
+          // 等待对话框容器出现
+          await window.electronAPI.waitForSelector("div[data-testid='dmDrawer']", { timeout: 10000 })
+          
+          // 等待加载动画消失
+          let isLoaded = false
+          let attempts = 0
+          const maxAttempts = 10
 
-        if (hasInput) {
+          while (!isLoaded && attempts < maxAttempts) {
+            isLoaded = await window.electronAPI.evaluate(`
+              (() => {
+                // 检查加载动画或遮罩是否存在
+                const loadingOverlay = document.querySelector('div[aria-label="加载中"]') ||
+                                     document.querySelector('div[role="progressbar"]');
+                                     
+                // 检查输入框是否可用
+                const editor = document.querySelector("div[data-testid='dmComposerTextInput']");
+                const isEditorReady = editor && window.getComputedStyle(editor).opacity === '1';
+                
+                return !loadingOverlay && isEditorReady;
+              })()
+            `)
+
+            if (!isLoaded) {
+              attempts++
+              this.onLog(`⏳ 等待界面加载完成 (${attempts}/${maxAttempts})...`, 'info')
+              await window.electronAPI.waitForTimeout(1000)
+            }
+          }
+
+          if (!isLoaded) {
+            this.onLog(`⚠️ 消息框加载超时: ${profileUrl}`, 'warning')
+            return { success: false, message: '消息框加载超时' }
+          }
+
+          // 确保输入框完全就绪
+          await window.electronAPI.waitForTimeout(1000)
+
           // 输入消息
-          this.onLog(`⌨️ 正在输入消息...`, 'info');
-          await window.electronAPI.type(
-            "div[role='textbox']",
-            this.config.messageTemplate
-          );
-          await window.electronAPI.waitForTimeout(this.DELAYS.BUTTON_CHECK);
+          const messageInput = await window.electronAPI.evaluate(`
+            (() => {
+              const editor = document.querySelector("div[data-testid='dmComposerTextInput']");
+              if (!editor) return false;
+              
+              try {
+                // 1. 聚焦编辑器
+                editor.click();
+                editor.focus();
+                
+                // 2. 使用 execCommand 插入文本
+                document.execCommand('insertText', false, \`${this.config.messageTemplate}\`);
+                
+                // 3. 触发必要的事件
+                editor.dispatchEvent(new InputEvent('input', {
+                  bubbles: true,
+                  cancelable: true,
+                  inputType: 'insertText',
+                  data: \`${this.config.messageTemplate}\`
+                }));
+                
+                return true;
+              } catch (e) {
+                console.error('设置消息内容时出错:', e);
+                return false;
+              }
+            })()
+          `)
 
-          // 等待发送按钮可用
-          let hasSendBtn = false;
-          let attempts = 0;
-          const maxAttempts = 5;
-
-          while (attempts < maxAttempts && !hasSendBtn) {
-            hasSendBtn = await window.electronAPI.waitForSelector(
-              "div[role='button'][data-testid='dmComposerSendButton']:not([aria-disabled='true'])",
-              { timeout: 5000 }
-            );
-            if (!hasSendBtn) {
-              attempts++;
-              this.onLog(`⏳ 等待发送按钮可用 (${attempts}/${maxAttempts})...`, 'info');
-              await window.electronAPI.waitForTimeout(this.DELAYS.BUTTON_CHECK);
-            }
+          if (!messageInput) {
+            this.onLog(`⚠️ 未找到消息输入框或输入失败: ${profileUrl}`, 'warning')
+            return { success: false, message: '未找到消息输入框或输入失败' }
           }
 
-          if (hasSendBtn) {
-            await window.electronAPI.click(
-              "div[role='button'][data-testid='dmComposerSendButton']:not([aria-disabled='true'])"
-            );
-            this.onLog(`✅ 消息已发送: ${profileUrl}`, 'success');
-            await window.electronAPI.waitForTimeout(this.DELAYS.MESSAGE_SEND);
-            return;
-          } else {
-            throw new Error('发送按钮未启用');
+          // 检查发送按钮状态
+          const sendButtonState = await window.electronAPI.evaluate(`
+            (() => {
+              const button = document.querySelector("button[data-testid='dmComposerSendButton']");
+              if (!button) return null;
+              
+              return {
+                enabled: !button.disabled && !button.getAttribute('aria-disabled'),
+                visible: button.offsetParent !== null,
+                testid: button.getAttribute('data-testid'),
+                text: button.textContent
+              };
+            })()
+          `)
+
+          if (!sendButtonState || !sendButtonState.enabled || !sendButtonState.visible) {
+            this.onLog(`⚠️ 发送按钮未启用: ${profileUrl}`, 'warning')
+            return { success: false, message: '发送按钮未启用' }
           }
-        } else {
-          throw new Error('未找到消息输入框');
-        }
-      } catch (error: any) {
-        retryCount++;
-        if (retryCount < this.MAX_RETRIES) {
-          this.onLog(`⚠️ 发送失败，等待重试 (${retryCount}/${this.MAX_RETRIES}): ${error.message}`, 'warning');
-          await window.electronAPI.waitForTimeout(this.DELAYS.RETRY_DELAY);
-        } else {
-          throw new Error(`发送消息失败: ${error.message}`);
-        }
+
+          // 测试模式：不实际点击发送按钮，只输出状态
+          this.onLog(`🔍 发送按钮状态检查 [${profileUrl}]:`, 'info')
+          this.onLog(`✓ 按钮可用: ${sendButtonState.enabled}`, 'info')
+          this.onLog(`✓ 按钮可见: ${sendButtonState.visible}`, 'info')
+          this.onLog(`✓ 按钮ID: ${sendButtonState.testid}`, 'info')
+          this.onLog(`✓ 消息已准备就绪，测试成功`, 'success')
+
+          // 等待一下模拟发送延迟
+          await window.electronAPI.waitForTimeout(this.DELAYS.MESSAGE_SEND)
+          return { success: true, message: '测试成功 - 消息未实际发送' }
+
+        default:
+          return { success: false, message: '未知状态' }
       }
+    } catch (error: any) {
+      this.onLog(`❌ 处理失败: ${profileUrl} - ${error.message}`, 'error')
+      return { success: false, message: error.message }
     }
   }
 
