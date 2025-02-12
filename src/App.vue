@@ -392,6 +392,27 @@ const handleCookiesError = (message: string) => {
     color: #1d9bf0;
     text-shadow: 0 0 20px rgba(29, 155, 240, 0.3);
     margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    &::before {
+      content: '';
+      width: 20px;
+      height: 20px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231d9bf0'%3E%3Cpath d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.63-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 8px rgba(29, 155, 240, 0.3));
+      transition: all 0.3s ease;
+    }
+    
+    &:hover::before {
+      filter: drop-shadow(0 0 12px rgba(29, 155, 240, 0.5));
+      transform: scale(1.05);
+    }
   }
 
   .form-content {
@@ -428,6 +449,15 @@ const handleCookiesError = (message: string) => {
   }
 }
 
+.status-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  gap: 12px;
+  isolation: isolate;
+}
+
 .status-card {
   padding: 16px;
   height: fit-content;
@@ -437,6 +467,27 @@ const handleCookiesError = (message: string) => {
     color: #1d9bf0;
     text-shadow: 0 0 20px rgba(29, 155, 240, 0.3);
     margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    &::before {
+      content: '';
+      width: 20px;
+      height: 20px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231d9bf0'%3E%3Cpath d='M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 8px rgba(29, 155, 240, 0.3));
+      transition: all 0.3s ease;
+    }
+    
+    &:hover::before {
+      filter: drop-shadow(0 0 12px rgba(29, 155, 240, 0.5));
+      transform: scale(1.05);
+    }
   }
 
   .status-content {
@@ -493,11 +544,14 @@ const handleCookiesError = (message: string) => {
 }
 
 .logs-card {
-  margin-top: 12px;
+  margin-top: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
   
   .logs-content {
     flex: 1;
@@ -505,6 +559,11 @@ const handleCookiesError = (message: string) => {
     flex-direction: column;
     min-height: 0;
     margin-top: 0;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    isolation: isolate;
+    z-index: 0;
   }
   
   .card-header {
@@ -512,9 +571,32 @@ const handleCookiesError = (message: string) => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+    position: relative;
+    z-index: 2;
     
     h2 {
       margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      &::before {
+        content: '';
+        width: 20px;
+        height: 20px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231d9bf0'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 3h-3.5V7h3.5V6zm0 3h-3.5v1h3.5V9zm-10 4h10v1H7v-1zm0 3h10v1H7v-1zm-2-9h1v1H5V7zm0 3h1v1H5v-1z'/%3E%3C/svg%3E");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        flex-shrink: 0;
+        filter: drop-shadow(0 0 8px rgba(29, 155, 240, 0.3));
+        transition: all 0.3s ease;
+      }
+      
+      &:hover::before {
+        filter: drop-shadow(0 0 12px rgba(29, 155, 240, 0.5));
+        transform: scale(1.05);
+      }
     }
   }
   
@@ -527,63 +609,141 @@ const handleCookiesError = (message: string) => {
     border: 1px solid rgba(255, 255, 255, 0.05);
     padding: 12px;
     transition: all 0.3s ease;
-    
-    &:hover {
-      border-color: rgba(29, 155, 240, 0.1);
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-    }
+    position: relative;
+    isolation: isolate;
+    z-index: 1;
+    clip-path: inset(0 0 0 0 round 12px);
     
     .log-item {
-      padding: 8px 12px;
-      border-radius: 8px;
-      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin-bottom: 10px;
       background: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.05);
       transition: all 0.3s ease;
+      overflow: hidden;
+      animation: fadeSlideLeft 0.3s ease forwards;
+      isolation: isolate;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        transition: all 0.3s ease;
+      }
+      
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.02);
+        opacity: 0;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        z-index: -1;
+      }
       
       &:hover {
-        background: rgba(255, 255, 255, 0.03);
-        transform: translateX(2px);
+        transform: translateX(4px);
+        border-color: rgba(255, 255, 255, 0.1);
+        
+        &::after {
+          opacity: 1;
+        }
       }
       
       &.success {
-        border-left: 3px solid #3fb950;
+        border-left: none;
+        background: rgba(35, 134, 54, 0.05);
+        border-color: rgba(35, 134, 54, 0.2);
+        
+        &::before {
+          background: #3fb950;
+          box-shadow: 0 0 10px rgba(63, 185, 80, 0.4);
+        }
+        
+        &:hover {
+          background: rgba(35, 134, 54, 0.1);
+        }
+        
+        .log-time {
+          color: rgba(63, 185, 80, 0.8);
+        }
       }
       
       &.error {
-        border-left: 3px solid #f85149;
+        border-left: none;
+        background: rgba(248, 81, 73, 0.05);
+        border-color: rgba(248, 81, 73, 0.2);
+        
+        &::before {
+          background: #f85149;
+          box-shadow: 0 0 10px rgba(248, 81, 73, 0.4);
+        }
+        
+        &:hover {
+          background: rgba(248, 81, 73, 0.1);
+        }
+        
+        .log-time {
+          color: rgba(248, 81, 73, 0.8);
+        }
       }
       
       &.warning {
-        border-left: 3px solid #d29922;
+        border-left: none;
+        background: rgba(210, 153, 34, 0.05);
+        border-color: rgba(210, 153, 34, 0.2);
+        
+        &::before {
+          background: #d29922;
+          box-shadow: 0 0 10px rgba(210, 153, 34, 0.4);
+        }
+        
+        &:hover {
+          background: rgba(210, 153, 34, 0.1);
+        }
+        
+        .log-time {
+          color: rgba(210, 153, 34, 0.8);
+        }
+      }
+      
+      &.info {
+        border-left: none;
+        background: rgba(29, 155, 240, 0.05);
+        border-color: rgba(29, 155, 240, 0.2);
+        
+        &::before {
+          background: #1d9bf0;
+          box-shadow: 0 0 10px rgba(29, 155, 240, 0.4);
+        }
+        
+        &:hover {
+          background: rgba(29, 155, 240, 0.1);
+        }
+        
+        .log-time {
+          color: rgba(29, 155, 240, 0.8);
+        }
       }
       
       .log-time {
         color: rgba(255, 255, 255, 0.5);
         font-size: 12px;
-        margin-right: 8px;
+        margin-right: 10px;
+        font-family: monospace;
       }
       
       .log-message {
         color: rgba(255, 255, 255, 0.9);
         font-size: 13px;
-      }
-    }
-    
-    &::-webkit-scrollbar {
-      width: 4px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-      
-      &:hover {
-        background: rgba(29, 155, 240, 0.3);
+        line-height: 1.5;
       }
     }
   }
@@ -832,5 +992,16 @@ textarea.styled-input {
 
 .fade-slide-down {
   animation: fadeSlideDown 0.5s ease forwards;
+}
+
+@keyframes fadeSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 </style>
