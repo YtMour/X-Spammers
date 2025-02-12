@@ -1,5 +1,5 @@
 {
-  "name": "twitter-dm-tool",
+  "name": "x-spammers",
   "private": true,
   "version": "1.0.0",
   "scripts": {
@@ -31,20 +31,54 @@
   },
   "main": "dist-electron/main.js",
   "build": {
-    "appId": "com.twitter.dm.tool",
-    "productName": "Twitter DM Tool",
+    "appId": "com.x.spammers",
+    "productName": "X-Spammers",
     "directories": {
-      "output": "release"
+      "output": "release/${version}"
     },
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icons.png",
+      "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
     },
     "mac": {
-      "target": "dmg"
+      "target": [
+        "dmg"
+      ],
+      "icon": "public/icons.png",
+      "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "public/icons.png",
+      "artifactName": "${productName}-Linux-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "X-Spammers",
+      "installerIcon": "public/icons.png",
+      "uninstallerIcon": "public/icons.png",
+      "installerHeaderIcon": "public/icons.png",
+      "menuCategory": true,
+      "displayLanguageSelector": true
     }
   }
 }

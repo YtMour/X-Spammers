@@ -42,8 +42,29 @@ function createWindow() {
       preload: PRELOAD_PATH,
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false
+      sandbox: false,
+      devTools: false, // 禁用开发者工具
+      webSecurity: true, // 启用 web 安全特性
+      allowRunningInsecureContent: false, // 禁止运行不安全的内容
     },
+  })
+
+  // 禁用右键菜单
+  win.hookWindowMessage(0x0116, () => {
+    win?.setEnabled(false)
+    setTimeout(() => {
+      win?.setEnabled(true)
+    }, 100)
+    return true
+  })
+
+  // 禁用快捷键
+  win.webContents.on('before-input-event', (event, input) => {
+    // 禁用 Ctrl+Shift+I 和 F12
+    if ((input.control && input.shift && input.key.toLowerCase() === 'i') || 
+        (input.key === 'F12')) {
+      event.preventDefault()
+    }
   })
 
   if (process.env.VITE_DEV_SERVER_URL && win) {
@@ -52,10 +73,15 @@ function createWindow() {
     win.loadFile(path.join(DIST_PATH, 'index.html'))
   }
 
-  // 开发环境下打开开发者工具
-  if (!app.isPackaged && win) {
-    win.webContents.openDevTools()
-  }
+  // 阻止新窗口打开
+  win.webContents.setWindowOpenHandler(() => {
+    return { action: 'deny' }
+  })
+
+  // 阻止拖拽文件
+  win.webContents.on('will-navigate', (event) => {
+    event.preventDefault()
+  })
 }
 
 // 处理文件读写
