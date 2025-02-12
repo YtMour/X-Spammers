@@ -284,11 +284,13 @@ export class TwitterService {
   }
 
   private async sendMessageToProfile(profileUrl: string): Promise<{ success: boolean; message?: string }> {
-      try {
-      this.onLog(`🌐 正在访问用户页面: ${profileUrl}`, 'info')
+    try {
+      this.stats.totalAttempts++
+      const username = profileUrl.split('/').pop()
+      this.onLog(`🎯 开始处理用户: @${username}`, 'info')
       await window.electronAPI.goto(profileUrl)
         
-        // 等待页面加载
+      // 等待页面加载
       await window.electronAPI.waitForTimeout(this.DELAYS.PAGE_LOAD)
 
       // 首先检查账号状态
@@ -340,32 +342,32 @@ export class TwitterService {
       switch (accountStatus.status) {
         case 'verification_required':
           this.stats.verificationRequired++
-          this.onLog(`⚠️ 该用户需要验证才能发送私信: ${profileUrl}`, 'warning')
+          this.onLog(`⛔ @${username} - 需要验证才能发送私信`, 'warning')
           return { success: false, message: '需要验证才能发送私信' }
 
         case 'protected':
           this.stats.protected++
-          this.onLog(`⚠️ 跳过受保护的账号: ${profileUrl}`, 'warning')
+          this.onLog(`🔒 @${username} - 账号已受保护`, 'warning')
           return { success: false, message: '受保护的账号' }
 
         case 'blocked':
           this.stats.blocked++
-          this.onLog(`⚠️ 该用户无法接收私信: ${profileUrl}`, 'warning')
+          this.onLog(`🚫 @${username} - 无法接收私信`, 'warning')
           return { success: false, message: '无法接收私信' }
 
         case 'no_button':
           this.stats.noButton++
-          this.onLog(`⚠️ 未找到私信按钮: ${profileUrl}`, 'warning')
+          this.onLog(`❌ @${username} - 未找到私信按钮`, 'warning')
           return { success: false, message: '未找到私信按钮' }
 
         case 'ready':
           if (accountStatus.buttonInfo.disabled || !accountStatus.buttonInfo.visible) {
-            this.onLog(`⚠️ 私信按钮不可用: ${profileUrl}`, 'warning')
+            this.onLog(`⚠️ @${username} - 私信按钮不可用`, 'warning')
             return { success: false, message: '私信按钮不可用' }
           }
 
-          // 点击发送消息按钮后，等待消息框完全加载
-          this.onLog(`✨ 找到发送按钮: ${profileUrl}`, 'info')
+          // 点击发送消息按钮
+          this.onLog(`📨 @${username} - 准备发送私信...`, 'info')
           const clicked = await window.electronAPI.evaluate(`
             (() => {
               const button = document.querySelector('button[data-testid="sendDMFromProfile"]') || 
@@ -386,22 +388,20 @@ export class TwitterService {
           `)
 
           if (!clicked) {
-            this.onLog(`⚠️ 点击私信按钮失败: ${profileUrl}`, 'warning')
+            this.onLog(`❌ @${username} - 点击私信按钮失败`, 'warning')
             return { success: false, message: '点击私信按钮失败' }
           }
 
-          // 优化等待消息框加载逻辑
-          this.onLog(`⌛ 等待消息框加载...`, 'info')
+          // 等待消息框加载
+          this.onLog(`⌛ @${username} - 等待消息框加载...`, 'info')
           
           try {
-            // 使用Promise.race同时检查多个选择器
             await Promise.race([
               window.electronAPI.waitForSelector("div[data-testid='dmDrawer']", { timeout: 10000 }),
               window.electronAPI.waitForSelector("div[data-testid='dmComposerTextInput']", { timeout: 10000 }),
               window.electronAPI.waitForSelector("div[role='textbox'][contenteditable='true']", { timeout: 10000 })
             ])
             
-            // 等待短暂时间让界面完全就绪
             await window.electronAPI.waitForTimeout(2000)
             
             // 检查输入框状态
@@ -428,36 +428,30 @@ export class TwitterService {
             }
             
             if (editorStatus.isLoading) {
-              // 如果还在加载，额外等待
               await window.electronAPI.waitForTimeout(3000)
             }
             
           } catch (error) {
-            this.onLog(`⚠️ 等待消息框超时，尝试继续操作...`, 'warning')
+            this.onLog(`⚠️ @${username} - 等待消息框超时，尝试继续...`, 'warning')
           }
           
           // 输入消息
           const messageInput = await window.electronAPI.evaluate(`
             (() => {
-              const editor = document.querySelector("div[data-testid='dmComposerTextInput']");
+              const editor = document.querySelector("div[data-testid='dmComposerTextInput']") ||
+                           document.querySelector("div[role='textbox'][contenteditable='true']");
               if (!editor) return false;
               
               try {
-                // 1. 聚焦编辑器
                 editor.click();
                 editor.focus();
-                
-                // 2. 使用 execCommand 插入文本
                 document.execCommand('insertText', false, \`${this.config.messageTemplate}\`);
-                
-                // 3. 触发必要的事件
                 editor.dispatchEvent(new InputEvent('input', {
                   bubbles: true,
                   cancelable: true,
                   inputType: 'insertText',
                   data: \`${this.config.messageTemplate}\`
                 }));
-                
                 return true;
               } catch (e) {
                 console.error('设置消息内容时出错:', e);
@@ -467,47 +461,77 @@ export class TwitterService {
           `)
 
           if (!messageInput) {
-            this.onLog(`⚠️ 未找到消息输入框或输入失败: ${profileUrl}`, 'warning')
-            return { success: false, message: '未找到消息输入框或输入失败' }
+            this.onLog(`❌ @${username} - 消息输入失败`, 'warning')
+            return { success: false, message: '消息输入失败' }
           }
 
-          // 检查发送按钮状态
-          const sendButtonState = await window.electronAPI.evaluate(`
+          // 点击发送按钮
+          const sendResult = await window.electronAPI.evaluate(`
             (() => {
-              const button = document.querySelector("button[data-testid='dmComposerSendButton']");
-              if (!button) return null;
-              
-              return {
-                enabled: !button.disabled && !button.getAttribute('aria-disabled'),
-                visible: button.offsetParent !== null,
-                testid: button.getAttribute('data-testid'),
-                text: button.textContent
-              };
+              const sendButton = document.querySelector("button[data-testid='dmComposerSendButton']");
+              if (!sendButton || sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true') {
+                return false;
+              }
+              try {
+                sendButton.click();
+                return true;
+              } catch (e) {
+                return false;
+              }
             })()
           `)
 
-          if (!sendButtonState || !sendButtonState.enabled || !sendButtonState.visible) {
-            this.onLog(`⚠️ 发送按钮未启用: ${profileUrl}`, 'warning')
-            return { success: false, message: '发送按钮未启用' }
+          if (!sendResult) {
+            this.onLog(`❌ @${username} - 发送失败`, 'error')
+            return { success: false, message: '发送失败' }
           }
 
-          // 测试模式：不实际点击发送按钮，只输出状态
-          this.onLog(`🔍 发送按钮状态检查 [${profileUrl}]:`, 'info')
-          this.onLog(`✓ 按钮可用: ${sendButtonState.enabled}`, 'info')
-          this.onLog(`✓ 按钮可见: ${sendButtonState.visible}`, 'info')
-          this.onLog(`✓ 按钮ID: ${sendButtonState.testid}`, 'info')
-          this.onLog(`✓ 消息已准备就绪，测试成功`, 'success')
-
-          // 等待一下模拟发送延迟
+          // 等待发送完成
           await window.electronAPI.waitForTimeout(this.DELAYS.MESSAGE_SEND)
-          return { success: true, message: '测试成功 - 消息未实际发送' }
+          
+          // 验证发送状态
+          const sendStatus = await window.electronAPI.evaluate(`
+            (() => {
+              const errorElements = document.querySelectorAll('[role="alert"], [aria-live="polite"]');
+              for (const el of errorElements) {
+                if (el.textContent?.includes('发送失败') || 
+                    el.textContent?.includes('Failed to send') ||
+                    el.textContent?.includes('error')) {
+                  return { success: false, error: el.textContent };
+                }
+              }
+              return { success: true };
+            })()
+          `)
+
+          if (!sendStatus.success) {
+            this.onLog(`❌ @${username} - ${sendStatus.error || '发送失败'}`, 'error')
+            return { success: false, message: sendStatus.error || '发送失败' }
+          }
+
+          this.stats.successCount++
+          const runTime = Math.floor((Date.now() - this.stats.startTime) / 1000)
+          this.onLog(`✅ @${username} - 发送成功！`, 'success')
+          this.onLog(`📊 统计数据:
+          ✓ 总处理: ${this.stats.totalAttempts}
+          ✓ 成功数: ${this.stats.successCount}
+          ⚠️ 需验证: ${this.stats.verificationRequired}
+          🔒 受保护: ${this.stats.protected}
+          🚫 已屏蔽: ${this.stats.blocked}
+          ❌ 无按钮: ${this.stats.noButton}
+          ⛔ 错误数: ${this.stats.errors}
+          ⏱️ 运行时间: ${Math.floor(runTime / 60)}分${runTime % 60}秒
+          📈 平均速度: ${(this.stats.successCount / (runTime / 60)).toFixed(2)}条/分钟`, 'success')
+
+          return { success: true, message: '发送成功' }
 
         default:
           return { success: false, message: '未知状态' }
       }
     } catch (error: any) {
       this.stats.errors++
-      this.onLog(`❌ 处理失败: ${profileUrl} - ${error.message}`, 'error')
+      const username = profileUrl.split('/').pop()
+      this.onLog(`❌ @${username} - ${error.message}`, 'error')
       return { success: false, message: error.message }
     }
   }
