@@ -16,6 +16,16 @@ export class TwitterService {
     RETRY_DELAY: 15000     // 错误重试等待时间
   }
   private readonly MAX_RETRIES = 3  // 最大重试次数
+  private stats = {
+    totalAttempts: 0,
+    successCount: 0,
+    verificationRequired: 0,
+    protected: 0,
+    blocked: 0,
+    noButton: 0,
+    errors: 0,
+    startTime: 0
+  }
 
   constructor(
     config: TwitterConfig,
@@ -98,6 +108,16 @@ export class TwitterService {
 
   async start() {
     this.isRunning = true
+    this.stats = {
+      totalAttempts: 0,
+      successCount: 0,
+      verificationRequired: 0,
+      protected: 0,
+      blocked: 0,
+      noButton: 0,
+      errors: 0,
+      startTime: Date.now()
+    }
     let sentCount = 0
     const startTime = new Date()
 
@@ -174,18 +194,30 @@ export class TwitterService {
               sentCount++
                 this.onSentCount(sentCount)
                 
-              const runTime = Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
-              this.onLog(`📊 统计信息 - 已发送: ${sentCount} | 运行时间: ${runTime}秒 | 平均: ${(sentCount / (runTime / 60)).toFixed(2)}条/分钟`, 'success')
+                this.stats.successCount++
+                const runTime = Math.floor((Date.now() - this.stats.startTime) / 1000)
+                this.onLog(`📊 详细统计:
+                总尝试: ${this.stats.totalAttempts}
+                成功: ${this.stats.successCount}
+                需验证: ${this.stats.verificationRequired}
+                受保护: ${this.stats.protected}
+                已屏蔽: ${this.stats.blocked}
+                无按钮: ${this.stats.noButton}
+                错误数: ${this.stats.errors}
+                运行时间: ${runTime}秒
+                平均速度: ${(this.stats.successCount / (runTime / 60)).toFixed(2)}条/分钟`, 'success')
                 
               await window.electronAPI.waitForTimeout(this.config.sendDelay)
                 this.visitedUrls.add(link) // 只记录成功发送的用户
               }
             } catch (error: any) {
+              this.stats.errors++
               this.onLog(`❌ 发送消息失败 ${link}: ${error.message}`, 'error')
             }
           }
 
         } catch (error: any) {
+          this.stats.errors++
           this.onLog(`❌ 执行出错: ${error.message}`, 'error')
           await window.electronAPI.waitForTimeout(this.DELAYS.RETRY_DELAY)
         }
@@ -307,18 +339,22 @@ export class TwitterService {
       // 根据账号状态处理
       switch (accountStatus.status) {
         case 'verification_required':
+          this.stats.verificationRequired++
           this.onLog(`⚠️ 该用户需要验证才能发送私信: ${profileUrl}`, 'warning')
           return { success: false, message: '需要验证才能发送私信' }
 
         case 'protected':
+          this.stats.protected++
           this.onLog(`⚠️ 跳过受保护的账号: ${profileUrl}`, 'warning')
           return { success: false, message: '受保护的账号' }
 
         case 'blocked':
+          this.stats.blocked++
           this.onLog(`⚠️ 该用户无法接收私信: ${profileUrl}`, 'warning')
           return { success: false, message: '无法接收私信' }
 
         case 'no_button':
+          this.stats.noButton++
           this.onLog(`⚠️ 未找到私信按钮: ${profileUrl}`, 'warning')
           return { success: false, message: '未找到私信按钮' }
 
@@ -354,47 +390,52 @@ export class TwitterService {
             return { success: false, message: '点击私信按钮失败' }
           }
 
-          // 等待消息对话框出现并完全加载
+          // 优化等待消息框加载逻辑
           this.onLog(`⌛ 等待消息框加载...`, 'info')
           
-          // 等待对话框容器出现
-          await window.electronAPI.waitForSelector("div[data-testid='dmDrawer']", { timeout: 10000 })
-          
-          // 等待加载动画消失
-          let isLoaded = false
-          let attempts = 0
-          const maxAttempts = 10
-
-          while (!isLoaded && attempts < maxAttempts) {
-            isLoaded = await window.electronAPI.evaluate(`
+          try {
+            // 使用Promise.race同时检查多个选择器
+            await Promise.race([
+              window.electronAPI.waitForSelector("div[data-testid='dmDrawer']", { timeout: 10000 }),
+              window.electronAPI.waitForSelector("div[data-testid='dmComposerTextInput']", { timeout: 10000 }),
+              window.electronAPI.waitForSelector("div[role='textbox'][contenteditable='true']", { timeout: 10000 })
+            ])
+            
+            // 等待短暂时间让界面完全就绪
+            await window.electronAPI.waitForTimeout(2000)
+            
+            // 检查输入框状态
+            const editorStatus = await window.electronAPI.evaluate(`
               (() => {
-                // 检查加载动画或遮罩是否存在
+                const editor = document.querySelector("div[data-testid='dmComposerTextInput']") ||
+                              document.querySelector("div[role='textbox'][contenteditable='true']");
                 const loadingOverlay = document.querySelector('div[aria-label="加载中"]') ||
                                      document.querySelector('div[role="progressbar"]');
                                      
-                // 检查输入框是否可用
-                const editor = document.querySelector("div[data-testid='dmComposerTextInput']");
-                const isEditorReady = editor && window.getComputedStyle(editor).opacity === '1';
-                
-                return !loadingOverlay && isEditorReady;
+                return {
+                  editorFound: !!editor,
+                  isLoading: !!loadingOverlay,
+                  isVisible: editor ? (
+                    window.getComputedStyle(editor).opacity !== '0' &&
+                    window.getComputedStyle(editor).display !== 'none'
+                  ) : false
+                };
               })()
             `)
-
-            if (!isLoaded) {
-              attempts++
-              this.onLog(`⏳ 等待界面加载完成 (${attempts}/${maxAttempts})...`, 'info')
-              await window.electronAPI.waitForTimeout(1000)
+            
+            if (!editorStatus.editorFound || !editorStatus.isVisible) {
+              throw new Error('输入框未就绪');
             }
+            
+            if (editorStatus.isLoading) {
+              // 如果还在加载，额外等待
+              await window.electronAPI.waitForTimeout(3000)
+            }
+            
+          } catch (error) {
+            this.onLog(`⚠️ 等待消息框超时，尝试继续操作...`, 'warning')
           }
-
-          if (!isLoaded) {
-            this.onLog(`⚠️ 消息框加载超时: ${profileUrl}`, 'warning')
-            return { success: false, message: '消息框加载超时' }
-          }
-
-          // 确保输入框完全就绪
-          await window.electronAPI.waitForTimeout(1000)
-
+          
           // 输入消息
           const messageInput = await window.electronAPI.evaluate(`
             (() => {
@@ -465,6 +506,7 @@ export class TwitterService {
           return { success: false, message: '未知状态' }
       }
     } catch (error: any) {
+      this.stats.errors++
       this.onLog(`❌ 处理失败: ${profileUrl} - ${error.message}`, 'error')
       return { success: false, message: error.message }
     }
