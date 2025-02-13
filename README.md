@@ -1,10 +1,6 @@
 ﻿# X-Spammers
 
-<<<<<<< Updated upstream
 
-
-=======
->>>>>>> Stashed changes
 > ⚠️ **重要安全提醒**：本项目使用 `cookies.json` 存储 X (Twitter) 登录凭证。该文件包含敏感信息，已被添加到 `.gitignore` 中，永远不会被提交到代码仓库。请勿分享或提交此文件。
 
 一个基于 Electron + Vue3 + TypeScript 开发的 X (Twitter) 自动化私信工具，提供简洁的图形界面操作。该工具可以自动向特定搜索结果页面的用户发送私信。
@@ -196,7 +192,7 @@ const DELAYS = {
 1. 查看 [Issue](../../issues) 是否已有相关问题
 2. 如果没有，创建新的 Issue 并详细描述问题
 
-## 🔄 更新日志~
+## 🔄 更新日志
 
 ### v1.0.0
 - ✨ 首次发布
