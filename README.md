@@ -73,7 +73,7 @@
 
 ## 📋 使用前提
 
-- Node.js 16.x 或更高版本
+- 需要安装Google Chrome 浏览器
 - Google Chrome 浏览器
 - X (Twitter) 账号及 Cookies
 - 目标用户必须允许接收来自非关注者的私信
