@@ -1,6 +1,6 @@
 ﻿# X-Spammers
 
-this test
+
 
 > ⚠️ **重要安全提醒**：本项目使用 `cookies.json` 存储 X (Twitter) 登录凭证。该文件包含敏感信息，已被添加到 `.gitignore` 中，永远不会被提交到代码仓库。请勿分享或提交此文件。
 
