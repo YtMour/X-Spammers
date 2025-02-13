@@ -78,17 +78,10 @@ this test
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 1. 安装
 
-```bash
-# 使用淘宝镜像源（推荐国内用户使用）
-npm config set registry https://registry.npmmirror.com
-npm install
-
-# 或使用 cnpm
-npm install -g cnpm --registry=https://registry.npmmirror.com
-cnpm install
-```
+ [Releases 1](https://github.com/YtMour/X-Spammers/releases)中的安装文件
+或手动拉取代码进行手动编译
 
 ### 2. 配置 Cookies
 
@@ -96,21 +89,9 @@ cnpm install
 2. 安装 Cookie Editor 浏览器扩展
    - [Chrome/Edge 版本](https://microsoftedge.microsoft.com/addons/detail/cookieeditor/neaplmfkghagebokkhpjpoebhdledlfi)
    - [Firefox 版本](https://addons.mozilla.org/en-US/firefox/addon/cookie-editor/)
-3. 复制 cookies 模板文件：
-```bash
-cp cookies.template.json cookies.json
-```
-4. 将导出的 cookies 内容替换到 `cookies.json` 中
+3. 复制 cookies 
 
-### 3. 开发调试
-```bash
-npm run dev
-```
-
-### 4. 构建应用
-```bash
-npm run build
-```
+​	直接将cookies复制进程序窗口即可导入
 
 ## 🛠️ 配置说明
 
