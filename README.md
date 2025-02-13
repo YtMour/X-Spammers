@@ -73,7 +73,7 @@
 
 ## 📋 使用前提
 
-- Node.js 16.x 或更高版本
+- 需要安装Google Chrome 浏览器
 - Google Chrome 浏览器
 - X (Twitter) 账号及 Cookies
 - 目标用户必须允许接收来自非关注者的私信
@@ -196,7 +196,7 @@ const DELAYS = {
 1. 查看 [Issue](../../issues) 是否已有相关问题
 2. 如果没有，创建新的 Issue 并详细描述问题
 
-## 🔄 更新日志
+## 🔄 更新日志~~
 
 ### v1.0.0
 - ✨ 首次发布
