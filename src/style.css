@@ -2,7 +2,7 @@
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -37,19 +37,4 @@ body {
 #app {
   width: 100%;
   height: 100vh;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --app-bg-color: #e8eef7;
-    --card-bg-color: rgba(255, 255, 255, 0.95);
-    --card-hover-color: #ffffff;
-    --text-color: #24292f;
-    --text-secondary: #57606a;
-    --border-color: #d0d7de;
-    --card-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
-    --input-bg: #ffffff;
-    --input-border: #d0d7de;
-    --input-focus-bg: #ffffff;
-  }
 }

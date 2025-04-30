@@ -116,17 +116,12 @@ const handleImport = async () => {
 }
 
 .import-card {
-  background: rgba(255, 255, 255, 0.98);
+  background: #192734;
   border-radius: 24px;
   padding: 40px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   transform-origin: center;
   animation: cardAppear 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-
-  @media (prefers-color-scheme: dark) {
-    background: #192734;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-  }
 }
 
 @keyframes cardAppear {
@@ -163,20 +158,12 @@ h2 {
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  
-  @media (prefers-color-scheme: dark) {
-    color: #1d9bf0;
-  }
 }
 
 .subtitle {
   margin: 8px 0 0;
-  color: #536471;
+  color: #8899a6;
   font-size: 16px;
-  
-  @media (prefers-color-scheme: dark) {
-    color: #8899a6;
-  }
 }
 
 .steps {
@@ -225,12 +212,8 @@ h2 {
 
 .step-text {
   font-size: 14px;
-  color: #536471;
+  color: #8899a6;
   line-height: 1.4;
-  
-  @media (prefers-color-scheme: dark) {
-    color: #8899a6;
-  }
 }
 
 .form-group {
@@ -240,21 +223,13 @@ h2 {
 .textarea-container {
   position: relative;
   border-radius: 12px;
-  background: #f7f9f9;
+  background: #273340;
   transition: all 0.3s ease;
   overflow: hidden;
   display: flex;
   
-  @media (prefers-color-scheme: dark) {
-    background: #273340;
-  }
-  
   &:hover {
-    background: #eff3f4;
-    
-    @media (prefers-color-scheme: dark) {
-      background: #2c3c4c;
-    }
+    background: #2c3c4c;
   }
 }
 
@@ -265,7 +240,7 @@ textarea {
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.6;
-  color: #0f1419;
+  color: #fff;
   background: transparent;
   resize: none;
   transition: all 0.3s ease;
@@ -278,10 +253,6 @@ textarea {
   min-height: 120px;
   max-height: 200px;
   
-  @media (prefers-color-scheme: dark) {
-    color: #fff;
-  }
-  
   &:focus {
     outline: none;
     border-color: #1d9bf0;
@@ -290,11 +261,7 @@ textarea {
   }
   
   &::placeholder {
-    color: #536471;
-    
-    @media (prefers-color-scheme: dark) {
-      color: #8899a6;
-    }
+    color: #8899a6;
   }
   
   &::-webkit-scrollbar {
@@ -338,11 +305,7 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #536471;
-  
-  @media (prefers-color-scheme: dark) {
-    color: #8899a6;
-  }
+  color: #8899a6;
   
   .paste-icon {
     width: 32px;
@@ -378,11 +341,7 @@ textarea {
     }
     
     .button-background {
-      background: #cfd9de;
-      
-      @media (prefers-color-scheme: dark) {
-        background: #3d5466;
-      }
+      background: #3d5466;
     }
   }
 }
